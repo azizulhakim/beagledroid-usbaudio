@@ -24,7 +24,7 @@
 #include <sound/ac97_codec.h>
 #include <sound/pcm_params.h>
 
-#include "usbtv.h"
+#include "beagle-audio.h"
 
 static struct snd_pcm_hardware snd_beagleaudio_digital_hw = {
 /*	.info = SNDRV_PCM_INFO_MMAP |

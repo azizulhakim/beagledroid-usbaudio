@@ -21,7 +21,7 @@
 
 #include <linux/module.h>
 
-#include "usbtv.h"
+#include "beagle-audio.h"
 #include "aoa.h"
 
 int beagleaudio_set_regs(struct beagleaudio *beagleaudio, const u16 regs[][2], int size)
