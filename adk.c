@@ -169,7 +169,7 @@ struct usb_device_id beagleaudio_id_table[] = {
 MODULE_DEVICE_TABLE(usb, beagleaudio_id_table);
 
 MODULE_AUTHOR("Azizul Hakim");
-MODULE_DESCRIPTION("BeagleBone Audio Grabber Driver");
+MODULE_DESCRIPTION("BeagleBone Audio Driver");
 MODULE_LICENSE("GPL");
 
 struct usb_driver beagleaudio_usb_driver = {
