@@ -62,13 +62,10 @@ static struct snd_pcm_hardware snd_beagleaudio_digital_hw = {
 
 static int snd_beagleaudio_pcm_open(struct snd_pcm_substream *substream)
 {
-	struct beagleaudio *chip;// = snd_pcm_substream_chip(substream);
-	struct snd_pcm_runtime *runtime ;//= substream->runtime;
+	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
 
 	printk("PCM Open\n");
-
-chip = snd_pcm_substream_chip(substream);
-runtime = substream->runtime;
 
 	chip->snd_substream = substream;
 	runtime->hw = snd_beagleaudio_digital_hw;
@@ -80,11 +77,9 @@ runtime = substream->runtime;
 
 static int snd_beagleaudio_pcm_close(struct snd_pcm_substream *substream)
 {
-	struct beagleaudio *chip;// = snd_pcm_substream_chip(substream);
+	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
 
 	printk("PCM Close\n");
-
-	chip = snd_pcm_substream_chip(substream);
 
 	if (atomic_read(&chip->snd_stream)) {
 		atomic_set(&chip->snd_stream, 0);
@@ -100,11 +95,9 @@ static int snd_beagleaudio_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *hw_params)
 {
 	int rv;
-	struct beagleaudio *chip;// = snd_pcm_substream_chip(substream);
+	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
 
 	printk("PCM HW Params\n");
-
-	chip = snd_pcm_substream_chip(substream);
 
 	rv = snd_pcm_lib_malloc_pages(substream,
 		params_buffer_bytes(hw_params));
@@ -129,11 +122,9 @@ static int snd_beagleaudio_hw_free(struct snd_pcm_substream *substream)
 
 static int snd_beagleaudio_prepare(struct snd_pcm_substream *substream)
 {
-	struct beagleaudio *chip;// = snd_pcm_substream_chip(substream);
+	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
 
 	printk("PCM Prepare\n");
-
-	chip = snd_pcm_substream_chip(substream);
 
 	chip->snd_buffer_pos = 0;
 	chip->snd_period_pos = 0;
@@ -154,7 +145,7 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 
 	printk("PCM URB Received\n");
 
-	chip = urb->context;
+	/*chip = urb->context;
 	substream = chip->snd_substream;
 	runtime = substream->runtime;
 
@@ -219,14 +210,15 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 	if (period_elapsed)
 		snd_pcm_period_elapsed(substream);
 
-	usb_submit_urb(urb, GFP_ATOMIC);
+	usb_submit_urb(urb, GFP_ATOMIC);*/
 
 	printk("PCM URB Received Exit\n");
 }
 
 static int beagleaudio_audio_start(struct beagleaudio *chip)
 {
-	unsigned int pipe;
+	unsigned int pipe = -10000;
+	int ret;
 	static const u16 setup[][2] = {
 		/* These seem to enable the device. */
 		{ BEAGLEAUDIO_BASE + 0x0008, 0x0001 },
@@ -258,7 +250,9 @@ static int beagleaudio_audio_start(struct beagleaudio *chip)
 	if (chip->snd_bulk_urb == NULL)
 		goto err_alloc_urb;
 
-	pipe = usb_rcvbulkpipe(chip->udev, BEAGLEAUDIO_AUDIO_ENDP);
+	//pipe = usb_rcvbulkpipe(chip->udev, BEAGLEAUDIO_AUDIO_ENDP);
+	pipe = chip->bulk_out_pipe;
+	printk("pipe = %d\n", pipe);
 
 	chip->snd_bulk_urb->transfer_buffer = kzalloc(
 		BEAGLEAUDIO_AUDIO_URBSIZE, GFP_KERNEL);
@@ -272,10 +266,11 @@ static int beagleaudio_audio_start(struct beagleaudio *chip)
 	/* starting the stream */
 	beagleaudio_set_regs(chip, setup, ARRAY_SIZE(setup));
 
-	usb_clear_halt(chip->udev, pipe);
-	usb_submit_urb(chip->snd_bulk_urb, GFP_ATOMIC);
+	ret = usb_clear_halt(chip->udev, pipe);
+	printk("usb_clear_halt: %d\n", ret);
+	ret = usb_submit_urb(chip->snd_bulk_urb, GFP_ATOMIC);
 
-	printk("PCM Audio Start Exit\n");
+	printk("PCM Audio Start Exit %d\n", ret);
 
 	return 0;
 
@@ -334,11 +329,10 @@ void beagleaudio_audio_resume(struct beagleaudio *beagleaudio)
 
 static void snd_beagleaudio_trigger(struct work_struct *work)
 {
-	struct beagleaudio *chip;// = container_of(work, struct beagleaudio, snd_trigger);
+	struct beagleaudio *chip = container_of(work, struct beagleaudio, snd_trigger);
 
 	printk("PCM Trigger\n");
 
-	chip = container_of(work, struct beagleaudio, snd_trigger);
 
 	if (atomic_read(&chip->snd_stream))
 		beagleaudio_audio_start(chip);
@@ -350,11 +344,9 @@ static void snd_beagleaudio_trigger(struct work_struct *work)
 
 static int snd_beagleaudio_card_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct beagleaudio *chip;// = snd_pcm_substream_chip(substream);
+	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
 
 	printk("PCM Card trigger\n");
-
-	chip = snd_pcm_substream_chip(substream);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -380,13 +372,21 @@ static int snd_beagleaudio_card_trigger(struct snd_pcm_substream *substream, int
 
 static snd_pcm_uframes_t snd_beagleaudio_pointer(struct snd_pcm_substream *substream)
 {
-	struct beagleaudio *chip;// = snd_pcm_substream_chip(substream);
+	int i;
+	int flag = 0;
+	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
 
 	printk("PCM Pointer\n");
 
-	chip = snd_pcm_substream_chip(substream);
+	for (i=0; i<substream->runtime->buffer_size; i++){
+		if (substream->runtime->dma_area[i] != 0){
+			flag = 1;
+			break;
+		}
+	}
 
-	printk("PCM Pointer Exit\n");
+	if (flag != 0)
+	printk("PCM Pointer Exit. Buffer pos = %d\n", chip->snd_buffer_pos);
 
 	return chip->snd_buffer_pos;
 }

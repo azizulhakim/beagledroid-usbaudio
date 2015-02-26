@@ -50,12 +50,16 @@ static int beagleaudio_probe(struct usb_interface *intf,
 {
 	static int intfcount = 0;
 	int ret = 0;
+	int i;
 //	int size;
 	int datalen;
 	u8 data[8];
 	struct device *dev = &intf->dev;
 	struct beagleaudio *beagleaudio;
 	struct usb_device *usb_dev = interface_to_usbdev(intf);
+	struct usb_host_interface *interface_descriptor;
+	struct usb_endpoint_descriptor *endpoint;
+	unsigned int bulkoutpipe;
 
 	if (intfcount == 0 && id->idVendor == 0x18D1 && (id->idProduct == 0x2D00 || id->idProduct == 0x2D01 ||
 									id->idProduct == 0x2D02 || id->idProduct == 0x2D03 ||
@@ -71,11 +75,8 @@ static int beagleaudio_probe(struct usb_interface *intf,
 		if (intf->altsetting != NULL)
 			printk("BEAGLEDROID-USBAUDIO: intf->altsetting[0].des.bNumEndpoints : %d\n", intf->altsetting[0].desc.bNumEndpoints);
 
+		interface_descriptor = intf->cur_altsetting;
 
-		/* Packet size is split into 11 bits of base size and count of
-		 * extra multiplies of it.*/
-//		size = usb_endpoint_maxp(&intf->altsetting[1].endpoint[0].desc);
-//		size = (size & 0x07ff) * (((size & 0x1800) >> 11) + 1);
 
 		/* Device structure */
 		beagleaudio = kzalloc(sizeof(struct beagleaudio), GFP_KERNEL);
@@ -83,6 +84,38 @@ static int beagleaudio_probe(struct usb_interface *intf,
 			return -ENOMEM;
 		beagleaudio->dev = dev;
 		beagleaudio->udev = usb_get_dev(interface_to_usbdev(intf));
+		//beagleaudio->bulk_out_pipe = bulkoutpipe;
+
+
+		for(i=0; i<interface_descriptor->desc.bNumEndpoints; i++){
+			endpoint = &interface_descriptor->endpoint[i].desc;
+
+			if (((endpoint->bEndpointAddress & USB_ENDPOINT_DIR_MASK) == USB_DIR_OUT) && 
+				(endpoint->bmAttributes & USB_ENDPOINT_XFERTYPE_MASK) == USB_ENDPOINT_XFER_BULK
+			   ){
+					//andromon_usb->bulk_out_endpointAddr = endpoint->bEndpointAddress;
+					printk("BEAGLEDROID-USBAUDIO: Bulk out endpoint");
+
+					beagleaudio->bulk_out_pipe = usb_sndbulkpipe(beagleaudio->udev, endpoint->bEndpointAddress);
+
+					break;
+				}
+
+			/*if (!andromon_usb->bulk_in_endpointAddr &&
+				((endpoint->bEndpointAddress & USB_ENDPOINT_DIR_MASK) == USB_DIR_IN) && 
+				(endpoint->bmAttributes & USB_ENDPOINT_XFERTYPE_MASK) == USB_ENDPOINT_XFER_BULK
+			   ){
+					andromon_usb->bulk_in_endpointAddr = endpoint->bEndpointAddress;
+					Debug_Print("ANDROMON", "Bulk in endpoint");
+				}*/
+		}
+
+
+
+		/* Packet size is split into 11 bits of base size and count of
+		 * extra multiplies of it.*/
+//		size = usb_endpoint_maxp(&intf->altsetting[1].endpoint[0].desc);
+//		size = (size & 0x07ff) * (((size & 0x1800) >> 11) + 1);
 
 		//beagleaudio->iso_size = size;		// video
 
