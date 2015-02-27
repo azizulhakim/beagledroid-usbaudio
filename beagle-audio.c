@@ -136,88 +136,82 @@ static int snd_beagleaudio_prepare(struct snd_pcm_substream *substream)
 
 static void beagleaudio_audio_urb_received(struct urb *urb)
 {
-	struct beagleaudio *chip;// = urb->context;
-	struct snd_pcm_substream *substream;// = chip->snd_substream;
-	struct snd_pcm_runtime *runtime;// = substream->runtime;
-	size_t i, frame_bytes, chunk_length, buffer_pos, period_pos;
+	struct beagleaudio *chip = urb->context;
+	struct snd_pcm_substream *substream = chip->snd_substream;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+//	size_t i, frame_bytes, chunk_length, buffer_pos, period_pos;
 	int period_elapsed;
-	void *urb_current;
+//	void *urb_current;
+	unsigned int pcm_buffer_size;
+	unsigned int len, ret;
 
 	printk("PCM URB Received\n");
 
-	chip = urb->context;
-	substream = chip->snd_substream;
-	runtime = substream->runtime;
-
 	switch (urb->status) {
 	case 0:
+	printk("case 0\n");
 	case -ETIMEDOUT:
+	printk("case ETIMEDOUT\n");
 		break;
 	case -ENOENT:
 	case -EPROTO:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
+	printk("case ESHUTDOWN\n");
 		return;
 	default:
 		dev_warn(chip->dev, "unknown audio urb status %i\n",
 			urb->status);
 	}
 
+	printk("before lock\n");
 	if (!atomic_read(&chip->snd_stream))
 		return;
 
-	frame_bytes = runtime->frame_bits >> 3;
-	chunk_length = BEAGLEAUDIO_CHUNK / frame_bytes;
-
-	buffer_pos = chip->snd_buffer_pos;
-	period_pos = chip->snd_period_pos;
-	period_elapsed = 0;
-
-	for (i = 0; i < urb->actual_length; i += BEAGLEAUDIO_CHUNK_SIZE) {
-		urb_current = urb->transfer_buffer + i + BEAGLEAUDIO_AUDIO_HDRSIZE;
-
-		if (buffer_pos + chunk_length >= runtime->buffer_size) {
-			size_t cnt = (runtime->buffer_size - buffer_pos) *
-				frame_bytes;
-			memcpy(runtime->dma_area + buffer_pos * frame_bytes,
-				urb_current, cnt);
-			memcpy(runtime->dma_area, urb_current + cnt,
-				chunk_length * frame_bytes - cnt);
-		} else {
-			memcpy(runtime->dma_area + buffer_pos * frame_bytes,
-				urb_current, chunk_length * frame_bytes);
-		}
-
-		buffer_pos += chunk_length;
-		period_pos += chunk_length;
-
-		if (buffer_pos >= runtime->buffer_size)
-			buffer_pos -= runtime->buffer_size;
-
-		if (period_pos >= runtime->period_size) {
-			period_pos -= runtime->period_size;
-			period_elapsed = 1;
-		}
-	}
+	printk("lock\n");
 
 	snd_pcm_stream_lock(substream);
 
-	chip->snd_buffer_pos = buffer_pos;
-	chip->snd_period_pos = period_pos;
+	pcm_buffer_size = snd_pcm_lib_buffer_bytes(substream);
+	if (chip->snd_buffer_pos + PCM_PACKET_SIZE <= pcm_buffer_size){
+		//source = runtime->dma_area + chip->snd_buffer_pos;
+		memcpy(chip->snd_bulk_urb->transfer_buffer, runtime->dma_area + chip->snd_buffer_pos, PCM_PACKET_SIZE);
+	}
+	else{
+		len = pcm_buffer_size - chip->snd_buffer_pos;
+
+		//source = runtime->dma_area + chip->snd_buffer_pos;
+		memcpy(chip->snd_bulk_urb->transfer_buffer, runtime->dma_area + chip->snd_buffer_pos, len);
+		memcpy(chip->snd_bulk_urb->transfer_buffer + len, runtime->dma_area, PCM_PACKET_SIZE - len);	
+	}
+
+	period_elapsed = 0;
+	chip->snd_buffer_pos += PCM_PACKET_SIZE;
+	if (chip->snd_buffer_pos >= pcm_buffer_size)
+		chip->snd_buffer_pos -= pcm_buffer_size;
+
+	chip->snd_period_pos += PCM_PACKET_SIZE;
+	if (chip->snd_period_pos >= runtime->period_size) {
+		chip->snd_period_pos %= runtime->period_size;
+		period_elapsed = 1;
+	}
+
+//	snd_pcm_stream_lock(substream);
+
 
 	snd_pcm_stream_unlock(substream);
 
 	if (period_elapsed)
 		snd_pcm_period_elapsed(substream);
 
-	usb_submit_urb(urb, GFP_ATOMIC);
+	ret = usb_submit_urb(urb, GFP_ATOMIC);
 
-	printk("PCM URB Received Exit\n");
+	printk("PCM URB Received Exit  %d\n", ret);
 }
 
 static int beagleaudio_audio_start(struct beagleaudio *chip)
 {
-	unsigned int pipe = -10000;
+	unsigned int pipe;
 	int ret;
 	static const u16 setup[][2] = {
 		/* These seem to enable the device. */
@@ -255,12 +249,12 @@ static int beagleaudio_audio_start(struct beagleaudio *chip)
 	printk("pipe = %d\n", pipe);
 
 	chip->snd_bulk_urb->transfer_buffer = kzalloc(
-		BEAGLEAUDIO_AUDIO_URBSIZE, GFP_KERNEL);
+		PCM_PACKET_SIZE, GFP_KERNEL);
 	if (chip->snd_bulk_urb->transfer_buffer == NULL)
 		goto err_transfer_buffer;
 
 	usb_fill_bulk_urb(chip->snd_bulk_urb, chip->udev, pipe,
-		chip->snd_bulk_urb->transfer_buffer, BEAGLEAUDIO_AUDIO_URBSIZE,
+		chip->snd_bulk_urb->transfer_buffer, PCM_PACKET_SIZE,
 		beagleaudio_audio_urb_received, chip);
 
 	/* starting the stream */
@@ -378,17 +372,19 @@ static snd_pcm_uframes_t snd_beagleaudio_pointer(struct snd_pcm_substream *subst
 
 	printk("PCM Pointer\n");
 
-	for (i=0; i<substream->runtime->buffer_size; i++){
+	for (i=0; i<(int)substream->runtime->buffer_size; i++){
 		if (substream->runtime->dma_area[i] != 0){
+			//printk("%d  ", substream->runtime->dma_area[i]);
 			flag = 1;
-			break;
+//			break;
 		}
 	}
+	printk("\n");
 
 	if (flag != 0)
-	printk("PCM Pointer Exit. Buffer pos = %d\n", chip->snd_buffer_pos);
+	printk("PCM Pointer Exit. Buffer size = %d Buffer pos = %d\n", (int)substream->runtime->buffer_size, chip->snd_buffer_pos);
 
-	return chip->snd_buffer_pos;
+	return bytes_to_frames(substream->runtime, chip->snd_buffer_pos);
 }
 
 static struct snd_pcm_ops snd_beagleaudio_pcm_ops = {
