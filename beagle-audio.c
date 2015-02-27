@@ -145,7 +145,7 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 
 	printk("PCM URB Received\n");
 
-	/*chip = urb->context;
+	chip = urb->context;
 	substream = chip->snd_substream;
 	runtime = substream->runtime;
 
@@ -210,7 +210,7 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 	if (period_elapsed)
 		snd_pcm_period_elapsed(substream);
 
-	usb_submit_urb(urb, GFP_ATOMIC);*/
+	usb_submit_urb(urb, GFP_ATOMIC);
 
 	printk("PCM URB Received Exit\n");
 }

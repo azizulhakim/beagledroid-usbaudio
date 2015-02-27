@@ -59,7 +59,6 @@ static int beagleaudio_probe(struct usb_interface *intf,
 	struct usb_device *usb_dev = interface_to_usbdev(intf);
 	struct usb_host_interface *interface_descriptor;
 	struct usb_endpoint_descriptor *endpoint;
-	unsigned int bulkoutpipe;
 
 	if (intfcount == 0 && id->idVendor == 0x18D1 && (id->idProduct == 0x2D00 || id->idProduct == 0x2D01 ||
 									id->idProduct == 0x2D02 || id->idProduct == 0x2D03 ||
