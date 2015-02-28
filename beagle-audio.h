@@ -79,6 +79,7 @@ struct beagleaudio {
 	struct urb *snd_bulk_urb;
 	size_t snd_buffer_pos;
 	size_t snd_period_pos;
+	__u8	bulk_out_endpointAddr;
 	unsigned int bulk_out_pipe;
 };
 

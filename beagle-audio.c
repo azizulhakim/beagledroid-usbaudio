@@ -204,6 +204,7 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 	if (period_elapsed)
 		snd_pcm_period_elapsed(substream);
 
+	printk("submit urb 0\n");
 	ret = usb_submit_urb(urb, GFP_ATOMIC);
 
 	printk("PCM URB Received Exit  %d\n", ret);
@@ -250,6 +251,8 @@ static int beagleaudio_audio_start(struct beagleaudio *chip)
 
 	chip->snd_bulk_urb->transfer_buffer = kzalloc(
 		PCM_PACKET_SIZE, GFP_KERNEL);
+
+	if (chip->snd_bulk_urb->transfer_buffer) printk("Buffer founddddddddddddddddddddddd\n");
 	if (chip->snd_bulk_urb->transfer_buffer == NULL)
 		goto err_transfer_buffer;
 
@@ -262,6 +265,7 @@ static int beagleaudio_audio_start(struct beagleaudio *chip)
 
 	ret = usb_clear_halt(chip->udev, pipe);
 	printk("usb_clear_halt: %d\n", ret);
+	printk("submit urb 1\n");
 	ret = usb_submit_urb(chip->snd_bulk_urb, GFP_ATOMIC);
 
 	printk("PCM Audio Start Exit %d\n", ret);
@@ -315,8 +319,10 @@ void beagleaudio_audio_resume(struct beagleaudio *beagleaudio)
 {
 	printk("PCM Resume\n");
 
-	if (atomic_read(&beagleaudio->snd_stream) && beagleaudio->snd_bulk_urb)
+	if (atomic_read(&beagleaudio->snd_stream) && beagleaudio->snd_bulk_urb){
+		printk("submit urb 2\n");
 		usb_submit_urb(beagleaudio->snd_bulk_urb, GFP_ATOMIC);
+	}
 
 	printk("PCM Resume Exit\n");
 }
