@@ -115,7 +115,7 @@ static int snd_beagleaudio_hw_params(struct snd_pcm_substream *substream,
 static int snd_beagleaudio_hw_free(struct snd_pcm_substream *substream)
 {
 	printk("PCM HW Free\n");
-	//snd_pcm_lib_free_pages(substream);
+	snd_pcm_lib_free_pages(substream);
 	printk("PCM HW Free Exit\n");
 	return 0;
 }
@@ -149,15 +149,22 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 
 	switch (urb->status) {
 	case 0:
-	printk("case 0\n");
-	case -ETIMEDOUT:
-	printk("case ETIMEDOUT\n");
+		printk("case 0\n");
 		break;
+	case -ETIMEDOUT:
+		printk("case ETIMEDOUT\n");
+		return;
 	case -ENOENT:
+		printk("case ENOENT\n");
+		return;
 	case -EPROTO:
+		printk("case EPROTO\n");
+		return;
 	case -ECONNRESET:
+		printk("case ECONNRESET\n");
+		return;
 	case -ESHUTDOWN:
-	printk("case ESHUTDOWN\n");
+		printk("case ESHUTDOWN\n");
 		return;
 	default:
 		dev_warn(chip->dev, "unknown audio urb status %i\n",
@@ -377,7 +384,7 @@ static snd_pcm_uframes_t snd_beagleaudio_pointer(struct snd_pcm_substream *subst
 	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
 
 	printk("PCM Pointer\n");
-
+/*
 	for (i=0; i<(int)substream->runtime->buffer_size; i++){
 		if (substream->runtime->dma_area[i] != 0){
 			//printk("%d  ", substream->runtime->dma_area[i]);
@@ -389,7 +396,7 @@ static snd_pcm_uframes_t snd_beagleaudio_pointer(struct snd_pcm_substream *subst
 
 	if (flag != 0)
 	printk("PCM Pointer Exit. Buffer size = %d Buffer pos = %d\n", (int)substream->runtime->buffer_size, chip->snd_buffer_pos);
-
+*/
 	return bytes_to_frames(substream->runtime, chip->snd_buffer_pos);
 }
 
