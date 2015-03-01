@@ -149,7 +149,7 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 
 	switch (urb->status) {
 	case 0:
-		printk("case 0\n");
+		printk("case SUCCESS\n");
 		break;
 	case -ETIMEDOUT:
 		printk("case ETIMEDOUT\n");
@@ -268,7 +268,7 @@ static int beagleaudio_audio_start(struct beagleaudio *chip)
 		beagleaudio_audio_urb_received, chip);
 
 	/* starting the stream */
-	beagleaudio_set_regs(chip, setup, ARRAY_SIZE(setup));
+	//beagleaudio_set_regs(chip, setup, ARRAY_SIZE(setup));
 
 	ret = usb_clear_halt(chip->udev, pipe);
 	printk("usb_clear_halt: %d\n", ret);
@@ -305,7 +305,7 @@ static int beagleaudio_audio_stop(struct beagleaudio *chip)
 		chip->snd_bulk_urb = NULL;
 	}
 
-	beagleaudio_set_regs(chip, setup, ARRAY_SIZE(setup));
+	//beagleaudio_set_regs(chip, setup, ARRAY_SIZE(setup));
 
 	printk("PCM Stop Exit\n");
 
@@ -383,7 +383,7 @@ static snd_pcm_uframes_t snd_beagleaudio_pointer(struct snd_pcm_substream *subst
 	int flag = 0;
 	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
 
-	printk("PCM Pointer\n");
+	//printk("PCM Pointer\n");
 /*
 	for (i=0; i<(int)substream->runtime->buffer_size; i++){
 		if (substream->runtime->dma_area[i] != 0){

@@ -81,6 +81,9 @@ struct beagleaudio {
 	size_t snd_period_pos;
 	__u8	bulk_out_endpointAddr;
 	unsigned int bulk_out_pipe;
+
+	unsigned char *inBuffer;
+	struct urb *irq;
 };
 
 int beagleaudio_set_regs(struct beagleaudio *beagleaudio, const u16 regs[][2], int size);
