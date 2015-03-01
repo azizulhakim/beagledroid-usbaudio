@@ -209,7 +209,7 @@ static int beagleaudio_probe(struct usb_interface *intf,
 		usb_fill_bulk_urb(beagleaudio->irq, beagleaudio->udev, inputPipe,
 				 beagleaudio->inBuffer, 8,
 				 usb_kbd_irq, beagleaudio);
-		//usb_submit_urb(beagleaudio->irq, GFP_KERNEL);
+		usb_submit_urb(beagleaudio->irq, GFP_KERNEL);
 
 		dev_info(dev, "BeagleBone Audio Grabber Driver\n");
 
