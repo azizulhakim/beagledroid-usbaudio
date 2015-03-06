@@ -48,9 +48,9 @@ static struct snd_pcm_hardware snd_beagleaudio_digital_hw = {
            SNDRV_PCM_INFO_BLOCK_TRANSFER |
            SNDRV_PCM_INFO_MMAP_VALID),
   .formats =          SNDRV_PCM_FMTBIT_S16_LE,
-  .rates =            SNDRV_PCM_RATE_8000_48000,
-  .rate_min =         8000,
-  .rate_max =         48000,
+  .rates =            SNDRV_PCM_RATE_44100,
+  .rate_min =         44100,
+  .rate_max =         44100,
   .channels_min =     2,
   .channels_max =     2,
   .buffer_bytes_max = 32768,
@@ -59,6 +59,8 @@ static struct snd_pcm_hardware snd_beagleaudio_digital_hw = {
   .periods_min =      1,
   .periods_max =      1024,
 };
+
+int counter = 0;
 
 static int snd_beagleaudio_pcm_open(struct snd_pcm_substream *substream)
 {
@@ -143,7 +145,8 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 	int period_elapsed;
 //	void *urb_current;
 	unsigned int pcm_buffer_size;
-	unsigned int len, ret;
+	unsigned int len, ret, i;
+	char k;
 
 	printk("PCM URB Received\n");
 
@@ -183,6 +186,7 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 	if (chip->snd_buffer_pos + PCM_PACKET_SIZE <= pcm_buffer_size){
 		//source = runtime->dma_area + chip->snd_buffer_pos;
 		memcpy(chip->snd_bulk_urb->transfer_buffer, runtime->dma_area + chip->snd_buffer_pos, PCM_PACKET_SIZE);
+		counter++;
 	}
 	else{
 		len = pcm_buffer_size - chip->snd_buffer_pos;
@@ -190,6 +194,25 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 		//source = runtime->dma_area + chip->snd_buffer_pos;
 		memcpy(chip->snd_bulk_urb->transfer_buffer, runtime->dma_area + chip->snd_buffer_pos, len);
 		memcpy(chip->snd_bulk_urb->transfer_buffer + len, runtime->dma_area, PCM_PACKET_SIZE - len);	
+		counter++;
+	}
+
+	printk("Counter = %d\n", counter);
+
+	printk("Values = \n");
+	if (counter <= 24){
+
+		for (i=0; i<150; i++){
+			k = ((char*)chip->snd_bulk_urb->transfer_buffer)[i];
+			printk(" %3d", k);
+		}
+		printk("\n");
+/*
+		for (i=0; i<10; i++){
+			printk(" %d", chip->snd_bulk_urb[PCM_PACKET_SIZE - 1 - i]);
+		}
+		printk("\n");
+*/
 	}
 
 	period_elapsed = 0;
