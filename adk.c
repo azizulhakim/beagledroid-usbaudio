@@ -276,8 +276,8 @@ static void beagleaudio_disconnect(struct usb_interface *intf)
 struct usb_device_id beagleaudio_id_table[] = {
 	{ USB_DEVICE(0x0bb4, 0x0ff9) },
 	{ USB_DEVICE(0x0bb4, 0x0cb0) },
-	{ USB_DEVICE(0x18D1, 0x4E41) },
-	{ USB_DEVICE(0x18D1, 0x4E42) },
+	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x4E41, 255, 255, 0) },
+	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x4E42, 255, 255, 0) },
 	{ USB_DEVICE(0x05c6, 0x6764) },
 	//{ USB_DEVICE(0x18D1, 0x2D00) },
 	//{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D01, 255, 66, 1) },

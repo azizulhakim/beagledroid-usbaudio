@@ -26,12 +26,12 @@
 #define ACCESSORY_SEND_HID_EVENT		57
 #define ACCESSORY_REGISTER_AUDIO		58
 
-#define MANU	"IsonProjects"
-#define MODEL	"BeagleDroid"
-#define DESCRIPTION	"BEAGLEBOARD-ANDROID KEYBOARD MONITOR DRIVER"
+#define MANU	"BeagleBone"
+#define MODEL	"BeagleBone Black"
+#define DESCRIPTION	"Development platform"
 #define VERSION	"1.0"
-#define URI		"www.google.com"
-#define SERIAL	"10"
+#define URI		"http://beagleboard.org/"
+#define SERIAL	"42"
 
 #define ID_MANU		0
 #define ID_MODEL	1
