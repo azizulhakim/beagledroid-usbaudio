@@ -232,7 +232,7 @@ static int beagleaudio_probe(struct usb_interface *intf,
 		SendIdentificationInfo(usb_dev, ID_URI, (char*)URI);
 		SendIdentificationInfo(usb_dev, ID_SERIAL, (char*)SERIAL);
 
-		printk("<-----Audio Request------  %d ----------------->\n", SendAudioActivationRequest(usb_dev));
+		//printk("<-----Audio Request------  %d ----------------->\n", SendAudioActivationRequest(usb_dev));
 		SendAOAActivationRequest(usb_dev);
 
 		return 0;
@@ -281,8 +281,8 @@ struct usb_device_id beagleaudio_id_table[] = {
 	{ USB_DEVICE(0x05c6, 0x6764) },
 	//{ USB_DEVICE(0x18D1, 0x2D00) },
 	//{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D01, 255, 66, 1) },
-	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D04, 255, 255, 0) },
-	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D05, 255, 255, 0) },
+	//{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D04, 255, 255, 0) },
+	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D01, 255, 255, 0) },
 	//{ USB_DEVICE(0x18D1, 0x2D01) },
 	//{ USB_DEVICE(0x18D1, 0x2D02) },
 	//{ USB_DEVICE(0x18D1, 0x2D04) },
