@@ -12,9 +12,9 @@
 
 
 
-#define DRIVER_VERSION ""
+#define DRIVER_VERSION "1.0"
 #define DRIVER_AUTHOR "Azizul Hakim <azizulfahim2002@gmail.com>"
-#define DRIVER_DESC "USB HID Boot Protocol keyboard driver"
+#define DRIVER_DESC "USB Audio Driver for Android Device with AOA Protocol"
 #define DRIVER_LICENSE "GPL"
 
 #define REQ_GET_PROTOCOL				51

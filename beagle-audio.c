@@ -27,22 +27,6 @@
 #include "beagle-audio.h"
 
 static struct snd_pcm_hardware snd_beagleaudio_digital_hw = {
-/*	.info = SNDRV_PCM_INFO_MMAP |
-		SNDRV_PCM_INFO_INTERLEAVED |
-		SNDRV_PCM_INFO_BLOCK_TRANSFER |
-		SNDRV_PCM_INFO_MMAP_VALID,
-	.formats = SNDRV_PCM_FMTBIT_S16_LE,
-	.rates = SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_KNOT,
-	.rate_min = 48000,
-	.rate_max = 48000,
-	.channels_min = 2,
-	.channels_max = 2,
-	.period_bytes_min = 64,
-	.period_bytes_max = 12544,
-	.periods_min = 2,
-	.periods_max = 98,
-	.buffer_bytes_max = 62720 * 8,*/ /* value in usbaudio.c */
-
   .info = (SNDRV_PCM_INFO_MMAP |
            SNDRV_PCM_INFO_INTERLEAVED |
            SNDRV_PCM_INFO_BLOCK_TRANSFER |
@@ -141,9 +125,7 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 	struct beagleaudio *chip = urb->context;
 	struct snd_pcm_substream *substream = chip->snd_substream;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-//	size_t i, frame_bytes, chunk_length, buffer_pos, period_pos;
 	int period_elapsed;
-//	void *urb_current;
 	unsigned int pcm_buffer_size;
 	unsigned int len, ret, i;
 	char k;
@@ -174,31 +156,25 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 			urb->status);
 	}
 
-	printk("before lock\n");
 	if (!atomic_read(&chip->snd_stream))
 		return;
-
-	printk("lock\n");
 
 	snd_pcm_stream_lock(substream);
 
 	pcm_buffer_size = snd_pcm_lib_buffer_bytes(substream);
 	if (chip->snd_buffer_pos + PCM_PACKET_SIZE <= pcm_buffer_size){
-		//source = runtime->dma_area + chip->snd_buffer_pos;
 		memcpy(chip->snd_bulk_urb->transfer_buffer, runtime->dma_area + chip->snd_buffer_pos, PCM_PACKET_SIZE);
 		counter++;
 	}
 	else{
 		len = pcm_buffer_size - chip->snd_buffer_pos;
 
-		//source = runtime->dma_area + chip->snd_buffer_pos;
 		memcpy(chip->snd_bulk_urb->transfer_buffer, runtime->dma_area + chip->snd_buffer_pos, len);
 		memcpy(chip->snd_bulk_urb->transfer_buffer + len, runtime->dma_area, PCM_PACKET_SIZE - len);	
 		counter++;
 	}
 
 	printk("Counter = %d\n", counter);
-
 	printk("Values = \n");
 	if (counter <= 24){
 
@@ -207,12 +183,6 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 			printk(" %3d", k);
 		}
 		printk("\n");
-/*
-		for (i=0; i<10; i++){
-			printk(" %d", chip->snd_bulk_urb[PCM_PACKET_SIZE - 1 - i]);
-		}
-		printk("\n");
-*/
 	}
 
 	period_elapsed = 0;
@@ -225,8 +195,6 @@ static void beagleaudio_audio_urb_received(struct urb *urb)
 		chip->snd_period_pos %= runtime->period_size;
 		period_elapsed = 1;
 	}
-
-//	snd_pcm_stream_lock(substream);
 
 
 	snd_pcm_stream_unlock(substream);
@@ -244,30 +212,6 @@ static int beagleaudio_audio_start(struct beagleaudio *chip)
 {
 	unsigned int pipe;
 	int ret;
-	static const u16 setup[][2] = {
-		/* These seem to enable the device. */
-		{ BEAGLEAUDIO_BASE + 0x0008, 0x0001 },
-		{ BEAGLEAUDIO_BASE + 0x01d0, 0x00ff },
-		{ BEAGLEAUDIO_BASE + 0x01d9, 0x0002 },
-
-		{ BEAGLEAUDIO_BASE + 0x01da, 0x0013 },
-		{ BEAGLEAUDIO_BASE + 0x01db, 0x0012 },
-		{ BEAGLEAUDIO_BASE + 0x01e9, 0x0002 },
-		{ BEAGLEAUDIO_BASE + 0x01ec, 0x006c },
-		{ BEAGLEAUDIO_BASE + 0x0294, 0x0020 },
-		{ BEAGLEAUDIO_BASE + 0x0255, 0x00cf },
-		{ BEAGLEAUDIO_BASE + 0x0256, 0x0020 },
-		{ BEAGLEAUDIO_BASE + 0x01eb, 0x0030 },
-		{ BEAGLEAUDIO_BASE + 0x027d, 0x00a6 },
-		{ BEAGLEAUDIO_BASE + 0x0280, 0x0011 },
-		{ BEAGLEAUDIO_BASE + 0x0281, 0x0040 },
-		{ BEAGLEAUDIO_BASE + 0x0282, 0x0011 },
-		{ BEAGLEAUDIO_BASE + 0x0283, 0x0040 },
-		{ 0xf891, 0x0010 },
-
-		/* this sets the input from composite */
-		{ BEAGLEAUDIO_BASE + 0x0284, 0x00aa },
-	};
 
 	printk("PCM Audio Start\n");
 
@@ -275,23 +219,17 @@ static int beagleaudio_audio_start(struct beagleaudio *chip)
 	if (chip->snd_bulk_urb == NULL)
 		goto err_alloc_urb;
 
-	//pipe = usb_rcvbulkpipe(chip->udev, BEAGLEAUDIO_AUDIO_ENDP);
 	pipe = chip->bulk_out_pipe;
-	printk("pipe = %d\n", pipe);
 
 	chip->snd_bulk_urb->transfer_buffer = kzalloc(
 		PCM_PACKET_SIZE, GFP_KERNEL);
 
-	if (chip->snd_bulk_urb->transfer_buffer) printk("Buffer founddddddddddddddddddddddd\n");
 	if (chip->snd_bulk_urb->transfer_buffer == NULL)
 		goto err_transfer_buffer;
 
 	usb_fill_bulk_urb(chip->snd_bulk_urb, chip->udev, pipe,
 		chip->snd_bulk_urb->transfer_buffer, PCM_PACKET_SIZE,
 		beagleaudio_audio_urb_received, chip);
-
-	/* starting the stream */
-	//beagleaudio_set_regs(chip, setup, ARRAY_SIZE(setup));
 
 	ret = usb_clear_halt(chip->udev, pipe);
 	printk("usb_clear_halt: %d\n", ret);
@@ -313,12 +251,6 @@ err_alloc_urb:
 
 static int beagleaudio_audio_stop(struct beagleaudio *chip)
 {
-	static const u16 setup[][2] = {
-/*		{ BEAGLEAUDIO_BASE + 0x00a2, 0x0013 }, */
-		{ BEAGLEAUDIO_BASE + 0x027d, 0x0000 },
-		{ BEAGLEAUDIO_BASE + 0x0280, 0x0010 },
-		{ BEAGLEAUDIO_BASE + 0x0282, 0x0010 },
-	};
 
 	printk("PCM Stop\n");
 
@@ -329,8 +261,6 @@ static int beagleaudio_audio_stop(struct beagleaudio *chip)
 		usb_free_urb(chip->snd_bulk_urb);
 		chip->snd_bulk_urb = NULL;
 	}
-
-	//beagleaudio_set_regs(chip, setup, ARRAY_SIZE(setup));
 
 	printk("PCM Stop Exit\n");
 
@@ -352,7 +282,6 @@ void beagleaudio_audio_resume(struct beagleaudio *beagleaudio)
 	printk("PCM Resume\n");
 
 	if (atomic_read(&beagleaudio->snd_stream) && beagleaudio->snd_bulk_urb){
-		printk("submit urb = %p\n", beagleaudio->snd_bulk_urb);
 		usb_submit_urb(beagleaudio->snd_bulk_urb, GFP_ATOMIC);
 	}
 
@@ -404,24 +333,8 @@ static int snd_beagleaudio_card_trigger(struct snd_pcm_substream *substream, int
 
 static snd_pcm_uframes_t snd_beagleaudio_pointer(struct snd_pcm_substream *substream)
 {
-	int i;
-	int flag = 0;
 	struct beagleaudio *chip = snd_pcm_substream_chip(substream);
 
-	//printk("PCM Pointer\n");
-/*
-	for (i=0; i<(int)substream->runtime->buffer_size; i++){
-		if (substream->runtime->dma_area[i] != 0){
-			//printk("%d  ", substream->runtime->dma_area[i]);
-			flag = 1;
-//			break;
-		}
-	}
-	printk("\n");
-
-	if (flag != 0)
-	printk("PCM Pointer Exit. Buffer size = %d Buffer pos = %d\n", (int)substream->runtime->buffer_size, chip->snd_buffer_pos);
-*/
 	return bytes_to_frames(substream->runtime, chip->snd_buffer_pos);
 }
 
@@ -436,15 +349,6 @@ static struct snd_pcm_ops snd_beagleaudio_pcm_ops = {
 	.pointer = snd_beagleaudio_pointer,
 };
 
-/*static void beagleaudio_release(struct v4l2_device *v4l2_dev)
-{
-	//struct beagleaudio *beagleaudio = container_of(v4l2_dev, struct beagleaudio, v4l2_dev);
-
-	//v4l2_device_unregister(&beagleaudio->v4l2_dev);
-	//vb2_queue_release(&beagleaudio->vb2q);
-	//kfree(beagleaudio);
-}*/
-
 int beagleaudio_audio_init(struct beagleaudio *beagleaudio)
 {
 	int rv;
@@ -452,14 +356,6 @@ int beagleaudio_audio_init(struct beagleaudio *beagleaudio)
 	struct snd_pcm *pcm;
 
 	printk("Audio Init\n");
-
-/*	beagleaudio->v4l2_dev.release = beagleaudio_release;
-	rv = v4l2_device_register(beagleaudio->dev, &beagleaudio->v4l2_dev);
-	if (rv < 0) {
-		dev_warn(beagleaudio->dev, "Could not register v4l2 device\n");
-		goto v4l2_fail;
-	}
-*/
 
 	INIT_WORK(&beagleaudio->snd_trigger, snd_beagleaudio_trigger);
 	atomic_set(&beagleaudio->snd_stream, 0);

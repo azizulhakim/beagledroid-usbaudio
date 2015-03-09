@@ -24,31 +24,9 @@
 #include "beagle-audio.h"
 #include "aoa.h"
 
-int beagleaudio_set_regs(struct beagleaudio *beagleaudio, const u16 regs[][2], int size)
-{
-	int ret;
-	int pipe = usb_rcvctrlpipe(beagleaudio->udev, 0);
-	int i;
-
-	for (i = 0; i < size; i++) {
-		u16 index = regs[i][0];
-		u16 value = regs[i][1];
-
-		ret = usb_control_msg(beagleaudio->udev, pipe, BEAGLEAUDIO_REQUEST_REG,
-			USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_DEVICE,
-			value, index, NULL, 0, 0);
-
-		if (ret < 0)
-			return ret;
-	}
-
-	return 0;
-}
-
 static void usb_kbd_irq(struct urb *urb)
 {
 	struct beagleaudio *beagleaudio = urb->context;
-	int filterId;
 	int i;
 
 	switch (urb->status) {
@@ -64,7 +42,6 @@ static void usb_kbd_irq(struct urb *urb)
 	case -ESHUTDOWN:
 		printk("ESHUTDOWN\n");
 		return;
-	/* -EPIPE:  should clear the halt */
 	default:		/* error */
 		goto resubmit;
 	}
@@ -72,27 +49,6 @@ static void usb_kbd_irq(struct urb *urb)
 	for (i=0; i<8; i++){
 		printk("%d ", beagleaudio->inBuffer[i]);
 	}
-
-
-/*	filterId = kbd->new[0];
-	switch(filterId){
-		case KEYBOARDCONTROL:
-			// handle keyboard
-			handle_keyboard(kbd);
-			break;
-		case MOUSECONTROL:
-			// handle mouse
-
-			handle_mouse(kbd);
-			break;
-
-		case CONTROLMESSAGE:
-			// handle contorl message
-			handle_control(kbd);
-			break;
-		default:
-			break;
-	}*/
 
 resubmit:
 	i = usb_submit_urb (urb, GFP_ATOMIC);
@@ -107,7 +63,6 @@ static int beagleaudio_probe(struct usb_interface *intf,
 	static int intfcount = 0;
 	int ret = -1;
 	int i;
-//	int size;
 	int datalen;
 	u8 data[8];
 	struct device *dev = &intf->dev;
@@ -115,12 +70,10 @@ static int beagleaudio_probe(struct usb_interface *intf,
 	struct usb_device *usb_dev = interface_to_usbdev(intf);
 	struct usb_host_interface *interface_descriptor;
 	struct usb_endpoint_descriptor *endpoint;
-	struct usb_endpoint_descriptor *inEndpoint;
 	int interval;
-	unsigned int inputPipe;
+	unsigned int inputPipe = 0;
 
-	if (id->idVendor == 0x18D1 && (id->idProduct >= 0x2D00 && id->idProduct <= 0x2D05) 
-							   /*&& (id->bInterfaceClass = 255 && id->bInterfaceSubClass == 255 && id->bInterfaceProtocol == 0*/){
+	if (id->idVendor == 0x18D1 && (id->idProduct >= 0x2D00 && id->idProduct <= 0x2D05)){
 		printk("BEAGLEDROID-USBAUDIO:  [%04X:%04X] Connected in AOA mode\n", id->idVendor, id->idProduct);
 		printk("bInterfaceClass = %d  bInterfaceSubClass = %d   bInterfaceProtocol = %d bInterfaceNumber: %d\n", id->bInterfaceClass, id->bInterfaceSubClass, id->bInterfaceProtocol, id->bInterfaceNumber);
 
@@ -135,7 +88,6 @@ static int beagleaudio_probe(struct usb_interface *intf,
 
 		interface_descriptor = intf->cur_altsetting;
 
-//return 0;
 		/* Device structure */
 		beagleaudio = kzalloc(sizeof(struct beagleaudio), GFP_KERNEL);
 		if (beagleaudio == NULL)
@@ -151,12 +103,10 @@ static int beagleaudio_probe(struct usb_interface *intf,
 			if (((endpoint->bEndpointAddress & USB_ENDPOINT_DIR_MASK) == USB_DIR_OUT) && 
 				(endpoint->bmAttributes & USB_ENDPOINT_XFERTYPE_MASK) == USB_ENDPOINT_XFER_BULK
 			   ){
-					//andromon_usb->bulk_out_endpointAddr = endpoint->bEndpointAddress;
 					printk("BEAGLEDROID-USBAUDIO: Bulk out endpoint");
 
 					beagleaudio->bulk_out_endpointAddr = endpoint->bEndpointAddress;
 					beagleaudio->bulk_out_pipe = usb_sndbulkpipe(beagleaudio->udev, endpoint->bEndpointAddress);
-					printk("BULK OUT PIPE = %d\n", beagleaudio->bulk_out_pipe);
 
 					break;
 				}
@@ -183,27 +133,13 @@ static int beagleaudio_probe(struct usb_interface *intf,
 				}
 		}
 
-		/* Packet size is split into 11 bits of base size and count of
-		 * extra multiplies of it.*/
-//		size = usb_endpoint_maxp(&intf->altsetting[1].endpoint[0].desc);
-//		size = (size & 0x07ff) * (((size & 0x1800) >> 11) + 1);
-
-		//beagleaudio->iso_size = size;		// video
-
 		usb_set_intfdata(intf, beagleaudio);
 
-		//ret = beagleaudio_video_init(beagleaudio);
-		//if (ret < 0)
-		//	goto beagleaudio_video_fail;
 
 		ret = beagleaudio_audio_init(beagleaudio);
 		if (ret < 0)
 			goto beagleaudio_audio_fail;
 
-		/* for simplicity we exploit the v4l2_device reference counting */
-//		v4l2_device_get(&beagleaudio->v4l2_dev);
-
-		printk("prepare input port\n");
 		beagleaudio->irq = usb_alloc_urb(0, GFP_KERNEL);
 		beagleaudio->inBuffer = kmalloc(8, GFP_KERNEL);
 		usb_fill_bulk_urb(beagleaudio->irq, beagleaudio->udev, inputPipe,
@@ -215,7 +151,7 @@ static int beagleaudio_probe(struct usb_interface *intf,
 
 		return 0;
 	}
-	else/* if(intfcount == 0)*/{
+	else{
 		datalen = GetProtocol(usb_dev, (char*)data);
 
 		if (datalen < 0) {
@@ -241,9 +177,6 @@ static int beagleaudio_probe(struct usb_interface *intf,
 	goto exit;
 
 beagleaudio_audio_fail:
-	//beagleaudio_video_free(beagleaudio);
-
-//beagleaudio_video_fail:
 	printk("beagleaudio_audio_fail\n");
 	kfree(beagleaudio);
 
@@ -263,45 +196,18 @@ static void beagleaudio_disconnect(struct usb_interface *intf)
 		return;
 
 	beagleaudio_audio_free(beagleaudio);
-//	beagleaudio_video_free(beagleaudio);
 
 	usb_put_dev(beagleaudio->udev);
 	beagleaudio->udev = NULL;
-
-	/* the beagleaudio structure will be deallocated when v4l2 will be
-	   done using it */
-//	v4l2_device_put(&beagleaudio->v4l2_dev);
 }
 
 struct usb_device_id beagleaudio_id_table[] = {
-	{ USB_DEVICE(0x0bb4, 0x0ff9) },
-	{ USB_DEVICE(0x0bb4, 0x0cb0) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x4E41, 255, 255, 0) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x4E42, 255, 255, 0) },
-	{ USB_DEVICE(0x05c6, 0x6764) },
-	//{ USB_DEVICE(0x18D1, 0x2D00) },
-	//{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D01, 255, 66, 1) },
-	//{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D04, 255, 255, 0) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D01, 255, 255, 0) },
-	//{ USB_DEVICE(0x18D1, 0x2D01) },
-	//{ USB_DEVICE(0x18D1, 0x2D02) },
-	//{ USB_DEVICE(0x18D1, 0x2D04) },
 	{}
 };
 
-/*struct usb_device_id beagleaudio_id_table[] = {
-	{ USB_DEVICE(0x18D1, 0x4E41) },
-	{ USB_DEVICE(0x18D1, 0x4E42) },
-	{ USB_DEVICE(0x05c6, 0x6764) },
-	{ USB_DEVICE(0x18D1, 0x2D00) },
-	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D01, 255, 66, 1) },
-	{ USB_DEVICE(0x18D1, 0x2D05) },
-//	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x4e42, 255, 255, 0) },
-//	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D05, 255, 255, 0) },
-//	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D01, 255, 66, 1) },
-//	{ USB_DEVICE_AND_INTERFACE_INFO(0x18D1, 0x2D05, 255, 66, 1) },
-	{}
-};*/
 MODULE_DEVICE_TABLE(usb, beagleaudio_id_table);
 
 MODULE_AUTHOR("Azizul Hakim");
